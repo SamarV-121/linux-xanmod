@@ -39,6 +39,11 @@ if [ "${_compiler}" = "clang" ]; then
   _compiler_flags="CC=clang HOSTCC=clang LLVM=1 LLVM_IAS=1"
 fi
 
+## Choose between full LTO and ThinLTO (CLANG only) (default is ThinLTO)
+if [ -z ${_lto+x} ]; then
+  _lto=thin
+fi
+
 # Choose between the 4 main configs for stable branch. Default x86-64-v1 which use CONFIG_GENERIC_CPU2:
 # Possible values: config_x86-64-v1 (default) / config_x86-64-v2 / config_x86-64-v3 / config_x86-64-v4
 # This will be overwritten by selecting any option in microarchitecture script
@@ -140,10 +145,15 @@ prepare() {
 
   # Applying configuration
   cp -vf CONFIGS/xanmod/gcc/${_config} .config
-  # enable LTO_CLANG_THIN
+  # enable LTO_CLANG
   if [ "${_compiler}" = "clang" ]; then
-    scripts/config --disable LTO_CLANG_FULL
-    scripts/config --enable LTO_CLANG_THIN
+    if [ "${_lto}" = "full" ]; then
+      scripts/config --disable LTO_CLANG_THIN
+      scripts/config --enable LTO_CLANG_FULL
+    elif [ "${_lto}" = "thin" ]; then
+      scripts/config --disable LTO_CLANG_FULL
+      scripts/config --enable LTO_CLANG_THIN
+    fi
   fi
 
   # CONFIG_STACK_VALIDATION gives better stack traces. Also is enabled in all official kernel packages by Archlinux team
