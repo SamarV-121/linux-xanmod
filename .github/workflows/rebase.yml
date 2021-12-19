@@ -1,0 +1,39 @@
+name: Rebase
+
+on:
+  schedule: [cron: '0 0 * * *']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Automatic rebase
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Fetch upstream repo
+      run: |
+        git config user.name "SamarV-121"
+        git config user.email "samarvispute121@pm.me"
+        git fetch https://aur.archlinux.org/linux-xanmod.git
+
+    - name: Rebase
+      id: rebase
+      run: |
+        REBASE=$(git rebase FETCH_HEAD)
+        [ "$REBASE" ] || echo "UPDATE=1" >> $GITHUB_OUTPUT
+
+    - name: Push changes
+      if: steps.rebase.outputs.UPDATE == 1
+      uses: ad-m/github-push-action@master
+      with:
+        force: true
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Trigger builder workflow
+      if: steps.rebase.outputs.UPDATE == 1
+      run: |
+          curl -X POST --header "Authorization: token ${{ secrets.GH_TOKEN }}" https://api.github.com/repos/SamarV-121/linux-xanmod_builder/actions/workflows/docker-image.yml/dispatches -d '{"ref":"main"}'
